@@ -81,30 +81,33 @@ function lancePokemon (etatCourant) {
   return fetchPokemon().then((data) => {
     data.sort((x,y) => Number(x.PokedexNumber) - Number(y.PokedexNumber))
     majEtatEtPage(etatCourant, {
-      pokemons: data,
-      isSelected: 1,
+      pokemons: data, //initialise le tableau de pokemon
+      isSelected: 1, //initialise le pokemon selectionner par défault
+      numberOfPoke: 10, //initialise le nombre de pokemon afficher par défault
     });
   });
 }
 
 /**
  * Génère le code HTML du corps du PokemonsBody.
+ * Permet aussi de limiter le nombre de pokemons afficher avec slice(...),
+ * et de changer de pokemon selectionner.
  * @param {Etat} etatCourant 
- * @returns le code HTML
+ * @returns le code HTML et les callbaks associer.
  */
 function generePokemonsBody (etatCourant) {
   const tabLigne = etatCourant.pokemons.map((pokemon) => { // créé un tableau de pokemons
     const selected = etatCourant.isSelected == pokemon.PokedexNumber ? "is-selected" : "";
-    return `<tr id="pokemon-${pokemon.PokedexNumber}" class="${selected}">
+    return `<tbody> <tr id="pokemon-${pokemon.PokedexNumber}" class="${selected}">
             <td><img alt="${pokemon.Name}" src="${pokemon.Images.Detail}" width="64"></td>
             <td><div class="content">${pokemon.PokedexNumber}</div></td>
             <td><div class="content">${pokemon.Name}</div></td>
             <td>${pokemon.Abilities.join("</br>")}</td>
             <td>${pokemon.Types.join("</br>")}</td>
-          </tr>`})
+          </tr></tbody>`})
     return {
-    html: tabLigne.join(""), // ici renvoi une string
-    callbacks: etatCourant.pokemons.map((pokemon) => 
+    html: tabLigne.slice(0, etatCourant.numberOfPoke).join(""), // ici renvoi une string
+    callbacks: etatCourant.pokemons.slice(0, etatCourant.numberOfPoke).map((pokemon) =>
       ({ [`pokemon-${pokemon.PokedexNumber}`]: {
         onclick: () => {
         majEtatEtPage(etatCourant, {isSelected: pokemon.PokedexNumber}); // on met à jour 
@@ -113,7 +116,56 @@ function generePokemonsBody (etatCourant) {
     }
 }
 
+function genereOnglet(etatCourant){
+  return {
+  html: `
+    <div class="tabs">
+      <ul>
+        <li class="is-active">
+          <a>Tous les pokemons</a>
+        </li>
+        <li class="">
+          <a>Mes pokemons</a>
+        </li>
+      </ul>
+    </div> `,
+  callbacks: {},
+  }
+}
 
+function genereHead(etatCourant){
+  return {
+  html: `
+    <thead>
+      <tr>
+        <th>Image</th>
+        <th>#<i class="fas fa-angle-up"></i></th>
+        <th>Name</th>
+        <th>Abilities</th>
+        <th>Types</th>
+      </tr>
+    </thead>`,
+  callbacks: {}}
+}
+
+function moreButton(etatCourant){
+  const numbers = etatCourant.numberOfPoke < 19;
+  const html= `
+    <button id="button-more" class="button" tabindex="0"> More </button>
+    <button style="${numbers ? "display: none;" : ""}" id="button-less" class="button" tabindex="0">
+      Less   
+    </button>`
+  return { html:html, callbacks: {
+    "button-more": {
+      onclick: () => (majEtatEtPage(etatCourant, { numberOfPoke: etatCourant.numberOfPoke += 10 }), 
+        console.log(etatCourant.numberOfPoke)),
+    },
+    "button-less": {
+      onclick: () => (majEtatEtPage(etatCourant, { numberOfPoke: etatCourant.numberOfPoke -= 10}), 
+        console.log(etatCourant.numberOfPoke)),
+    }}
+  }
+}
 
 /**
  * Génère le code HTML du corps avec l'affichage
@@ -122,25 +174,23 @@ function generePokemonsBody (etatCourant) {
  */
 function displayPokemonsBody (etatCourant) {
   const pokemonBody = generePokemonsBody(etatCourant);
+  const onglet = genereOnglet(etatCourant);
+  const head = genereHead(etatCourant);
+  const button = moreButton(etatCourant); 
   return {
     html: `
     <div class="column">  
-      <table class="table is-fullwidth">
-        <thead>
-            <tr>
-              <th>Image</th>
-              <th>#<i class="fas fa-angle-up"></i></th>
-              <th>Name</th>
-              <th>Abilities</th>
-              <th>Types</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${pokemonBody.html}
-        </tbody>
-      </table>
+      <div>  
+        ${onglet.html}
+        <table class="table">
+          ${head.html}
+          ${pokemonBody.html}
+        </table>
+        ${button.html}
+      </div>
     </div>`,
-    callbacks: {...pokemonBody.callbacks,}};
+    callbacks: {...pokemonBody.callbacks, ...onglet.callbacks, 
+      ...head.callbacks, ...button.callbacks}};
 }
 
 function detailHeaderPokemon (etatCourant){
@@ -157,48 +207,59 @@ function detailHeaderPokemon (etatCourant){
   }
 }
 
+function detailBodyName (pokemon, etatCourant){
+  return {
+  html: `
+    <article class="media">
+      <div class="media-content">
+        <h1 class="title">${pokemon.Name}</h1>
+      </div>
+    </article>`,
+  callbacks: {},
+  }
+}
+
+function detailBodyContent(pokemon, etatCourant){
+  return {
+  html: `
+    <div class="content has-text-left">
+      <p>Hit points: ${pokemon.Attack}</p>
+      <h3>Abilities</h3><ul>
+        <li>${pokemon.Abilities.join("<li></li>")}</li>
+      </ul>
+      <h3>Resistant against</h3><ul>
+        <li>${Object.keys(pokemon.Against)
+        .filter(x => pokemon.Against[x] < 1).join("<li></li>")}</li>
+      </ul>
+      <h3>Weak against</h3>
+      <ul>
+        <li>${Object.keys(pokemon.Against)
+        .filter(x => pokemon.Against[x] > 1).join("<li></li>")}</li>
+      </ul>
+    </div>`,
+  callbacks: {},
+  }
+}
+
 function detailBodyPokemon (etatCourant){
   if (!etatCourant.isSelected) return {html: "", callbacks: {}};
   const pokemon = etatCourant.pokemons.find(pokemon => pokemon.PokedexNumber === etatCourant.isSelected);
-  const html = `<article class="media">
-                  <div class="media-content">
-                    <h1 class="title">${pokemon.Name}</h1>
-                  </div>
-                </article>
-                </div>
-                <div class="card-content">
-                <article class="media">
-                  <div class="media-content">
-                    <div class="content has-text-left">
-                      <p>Hit points: ${pokemon.Attack}</p>
-                      <h3>Abilities</h3>
-                      <ul>
-                        <li>${pokemon.Abilities.join("<li></li>")}}</li>
-                      </ul>
-                      <h3>Resistant against</h3>
-                      <ul>
-                        <li>${Object.keys(pokemon.Against)
-                        .filter(x => pokemon.Against[x] < 1).join("<li></li>")}</li>
-                      </ul>
-                      <h3>Weak against</h3>
-                      <ul>
-                      <li>${Object.keys(pokemon.Against)
-                        .filter(x => pokemon.Against[x] > 1).join("<li></li>")}</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <figure class="media-right">
-                    <figure class="image is-475x475">
-                      <img
-                        class=""
-                        src="${pokemon.Images.Full}" alt="${pokemon.name}"/>
-                    </figure>
-                  </figure>
-                </article>`
-  return {
-    html: html,
-    callbacks: {},
-  }
+  const name = detailBodyName(pokemon ,etatCourant);
+  const content = detailBodyContent(pokemon, etatCourant);
+  const html = `
+    ${name.html}          
+    <div class="card-content">
+      <article class="media">
+        <div class="media-content">
+          ${content.html}
+        </div>
+        <figure class="media-right">
+          <figure class="image is-475x475">
+            <img class="" src="${pokemon.Images.Full}" alt="${pokemon.name}"/>
+          </figure>
+        </figure>
+    </article>`
+  return { html: html, callbacks: {} }
 }
 
 function detailFooterPokemon (etatCourant) {
@@ -210,11 +271,10 @@ function detailFooterPokemon (etatCourant) {
   }
 }
 
-
 function genereDetailPokemon (etatCourant) {
   const header = detailHeaderPokemon(etatCourant);
-  const footer = detailFooterPokemon(etatCourant);
   const body = detailBodyPokemon(etatCourant);
+  const footer = detailFooterPokemon(etatCourant);
   return {
     html: `
       <div class="column">
@@ -309,7 +369,7 @@ function genereModaleLoginFooter(etatCourant) {
     html: `
   <footer class="modal-card-foot" style="justify-content: flex-end">
     <button id="btn-close-login-modal2" class="button">Fermer</button>
-    <button id="btn-submit-login-modal2" class="button">Valider</button>
+    <button id="btn-submit-login-modal2" class=""button is-success"">Valider</button>
   </footer>
   
   `,
@@ -368,53 +428,27 @@ function afficheModaleConnexion(etatCourant) {
   majEtatEtPage(etatCourant, {loginModal: true});
 }
 
-/**
- * Génère le code HTML et les callbacks pour la partie droite de la barre de
- * navigation qui contient le bouton de login.
- * @param {Etat} etatCourant
- * @returns un objet contenant le code HTML dans le champ html et la description
- * des callbacks à enregistrer dans le champ callbacks
- *//*
-function genereBoutonConnexion(etatCourant) {
-  return {
-    html: `
-    <div class="buttons"> 
-        <a id="btn-open-login-modal" class="button is-light"> 
-        <span class="icon">
-            <i class="fa fa-user" aria-hidden="true"></i>
-          </span>
-        &nbsp; Connexion</a>
-    </div>`,
-    callbacks: {
-      "btn-open-login-modal": {
-        onclick: () => afficheModaleConnexion(etatCourant),
-      },
-    },
-  };
-}*/
   
 /**
  * Génère le code HTML et les callbacks pour la partie droite de la barre de
- * navigation qui contient le bouton de deconnexion.
+ * navigation qui contient le bouton de connexion / deconnexion.
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
  */
  function genereBoutonConnexion(etatCourant) {
   const connected = etatCourant.login === undefined;
-  return {
-    html:`
+  return { html:`
     <div>
       <a class="navbar-item">${connected ? "" : etatCourant.login }</a>
     </div>
     <div class="buttons"> 
-        <a id="btn-connexion-modal" class=${connected ? "button is-light" : "button is-danger"}>
+        <a id="btn-connexion-modal" class="${connected ? "button is-light" : "button is-danger"}">
           <span class="icon">
             <i class="fa fa-user" aria-hidden="true"></i>
           </span>
         &nbsp; ${connected ? "Connexion" : "Déconnexion"}</a>
     </div>`,
-  
     callbacks: {
       "btn-connexion-modal": {
         onclick: () => connected ?  afficheModaleConnexion(etatCourant) 
@@ -425,6 +459,28 @@ function genereBoutonConnexion(etatCourant) {
 }
 
 /**
+ * Génère le code HTML et les callbacks pour la partie gauche du haut de page pour la barre
+ * de recherche.
+ * @param {Etat} etatCourant
+ * @returns un objet contenant le code HTML dans le champ html et la description
+ * des callbacks à enregistrer dans le champ callbacks
+ */
+function genereBarRecherche(etatCourant) {
+  return {
+    html: `
+    <div class="field">
+      <div class="control has-icons-left">
+        <input class="input" placeholder="Chercher un pokemon" type="text" value="">
+        <span class="icon is-left">
+          <i class="fa fa-magnifying-glass" aria-hidden="true"></i>
+        </span>
+      </div>
+    </div>`,
+    callbacks: {},
+  }
+}
+
+/**
  * Génère le code HTML de la barre de navigation et les callbacks associés.
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html et la description
@@ -432,23 +488,20 @@ function genereBoutonConnexion(etatCourant) {
  */
 function genereBarreNavigation(etatCourant) {
   const connexion = genereBoutonConnexion(etatCourant);
+  const recherche = genereBarRecherche(etatCourant); 
   return {
     html: `
-    <div class="App">
-      <nav class="navbar">
+    <div class="App"><nav class="navbar">
       <div class="navbar-menu">
         <div class="navbar-start">
-          <!-- Recherche ici -->
+          <a class="navbar-item"> ${recherche.html} </a>
           <a id="btn-pokedex" class="navbar_item button is-light"> Pokedex </a>
           <a id="btn-combat" class="navbar_item button is-light"> Combat </a>
         </div>
         ${connexion.html}
       </div>
-      </nav>`,
-    callbacks: {
-      ...connexion.callbacks,
-      "btn-pokedex": { onclick: () => console.log("click bouton pokedex") },
-    },
+    </nav></div>`,
+    callbacks: { ...recherche.callbacks, ...connexion.callbacks},
   };
 }
 
