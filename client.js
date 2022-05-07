@@ -107,7 +107,7 @@ function generePokemonsBody (etatCourant) {
     callbacks: etatCourant.pokemons.map((pokemon) => 
       ({ [`pokemon-${pokemon.PokedexNumber}`]: {
         onclick: () => {
-        majEtatEtPage(etatCourant, {isSelected: pokemon.PokedexNumber}); // on met à jour l'
+        majEtatEtPage(etatCourant, {isSelected: pokemon.PokedexNumber}); // on met à jour 
         }
       }})).reduce((acc, cur) => ({...acc, ...cur}), {})
     }
@@ -159,7 +159,7 @@ function detailHeaderPokemon (etatCourant){
 
 function detailBodyPokemon (etatCourant){
   if (!etatCourant.isSelected) return {html: "", callbacks: {}};
-  const pokemon = etatCourant.pokemons.find(pokemon => pokemon.PokedexNumber == isSelected);
+  const pokemon = etatCourant.pokemons.find(pokemon => pokemon.PokedexNumber === etatCourant.isSelected);
   const html = `<article class="media">
                   <div class="media-content">
                     <h1 class="title">${pokemon.Name}</h1>
@@ -177,12 +177,12 @@ function detailBodyPokemon (etatCourant){
                       </ul>
                       <h3>Resistant against</h3>
                       <ul>
-                        <li>${Objet.keys(pokemon.Against)
+                        <li>${Object.keys(pokemon.Against)
                         .filter(x => pokemon.Against[x] < 1).join("<li></li>")}</li>
                       </ul>
                       <h3>Weak against</h3>
                       <ul>
-                      <li>${Objet.keys(pokemon.Against)
+                      <li>${Object.keys(pokemon.Against)
                         .filter(x => pokemon.Against[x] > 1).join("<li></li>")}</li>
                       </ul>
                     </div>
@@ -213,8 +213,8 @@ function detailFooterPokemon (etatCourant) {
 
 function genereDetailPokemon (etatCourant) {
   const header = detailHeaderPokemon(etatCourant);
-  const footer = detailHeaderPokemon(etatCourant);
-  const body = detailFooterPokemon(etatCourant);
+  const footer = detailFooterPokemon(etatCourant);
+  const body = detailBodyPokemon(etatCourant);
   return {
     html: `
       <div class="column">
@@ -374,12 +374,12 @@ function afficheModaleConnexion(etatCourant) {
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
- */
+ *//*
 function genereBoutonConnexion(etatCourant) {
   return {
     html: `
     <div class="buttons"> 
-        <a id="btn-deconnexion-modal" class="button is-light"> 
+        <a id="btn-open-login-modal" class="button is-light"> 
         <span class="icon">
             <i class="fa fa-user" aria-hidden="true"></i>
           </span>
@@ -391,7 +391,7 @@ function genereBoutonConnexion(etatCourant) {
       },
     },
   };
-}
+}*/
   
 /**
  * Génère le code HTML et les callbacks pour la partie droite de la barre de
@@ -400,23 +400,25 @@ function genereBoutonConnexion(etatCourant) {
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
  */
- function genereBoutonDeconnexion(etatCourant) {
-  const html = `
+ function genereBoutonConnexion(etatCourant) {
+  const connected = etatCourant.login === undefined;
+  return {
+    html:`
     <div>
-      <a class="navbar-item">${etatCourant.login}</a>
+      <a class="navbar-item">${connected ? "" : etatCourant.login }</a>
     </div>
     <div class="buttons"> 
-        <a id="btn-deconnexion-modal" class="button is-danger">
+        <a id="btn-connexion-modal" class=${connected ? "button is-light" : "button is-danger"}>
           <span class="icon">
             <i class="fa fa-user" aria-hidden="true"></i>
           </span>
-        &nbsp; Déconnexion</a>
-    </div>`;
-  return {
-    html: html,
+        &nbsp; ${connected ? "Connexion" : "Déconnexion"}</a>
+    </div>`,
+  
     callbacks: {
-      "btn-deconnexion-modal": {
-        onclick: () => majEtatEtPage(etatCourant, {APIKey: undefined, login: undefined,}),
+      "btn-connexion-modal": {
+        onclick: () => connected ?  afficheModaleConnexion(etatCourant) 
+        : majEtatEtPage(etatCourant, {APIKey: undefined, login: undefined,}),
       }
     },
   };
@@ -430,7 +432,6 @@ function genereBoutonConnexion(etatCourant) {
  */
 function genereBarreNavigation(etatCourant) {
   const connexion = genereBoutonConnexion(etatCourant);
-  const deconnexion = genereBoutonDeconnexion(etatCourant);
   return {
     html: `
     <div class="App">
@@ -441,11 +442,11 @@ function genereBarreNavigation(etatCourant) {
           <a id="btn-pokedex" class="navbar_item button is-light"> Pokedex </a>
           <a id="btn-combat" class="navbar_item button is-light"> Combat </a>
         </div>
-        ${etatCourant.login === undefined ? connexion.html : deconnexion.html}
+        ${connexion.html}
       </div>
       </nav>`,
     callbacks: {
-      ...connexion.callbacks, ...deconnexion.callbacks,
+      ...connexion.callbacks,
       "btn-pokedex": { onclick: () => console.log("click bouton pokedex") },
     },
   };
@@ -472,7 +473,7 @@ function generePage(etatCourant) {
   // d'éléments en commun.
   return {
     html: barredeNavigation.html + modaleLogin.html + mainPokedex.html,
-    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...mainPokedex },
+    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...mainPokedex.callbacks},
   };
 }
 
