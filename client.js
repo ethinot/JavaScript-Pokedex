@@ -21,7 +21,7 @@ const serverUrl = "https://lifap5.univ-lyon1.fr";
  * @returns une promesse du login utilisateur ou du message d'erreur
  */
 function fetchWhoami(etatCourant) {
-  return fetch(serverUrl + "/whoami", { headers: { "Api-Key": etatCourant.APIKey } })
+  return fetch(serverUrl +"/whoami", {headers:{"Api-Key": etatCourant.APIKey}})
     .then((response) => {
       if (response.status === 401) {
         return response.json().then((json) => {
@@ -96,26 +96,32 @@ function lancePokemon (etatCourant) {
  * @returns le code HTML et les callbaks associer.
  */
 function generePokemonsBody (etatCourant) {
-  const tabLigne = etatCourant.pokemons.map((pokemon) => { // créé un tableau de pokemons
-    const selected = etatCourant.isSelected == pokemon.PokedexNumber ? "is-selected" : "";
-    return `<tbody> <tr id="pokemon-${pokemon.PokedexNumber}" class="${selected}">
-            <td><img alt="${pokemon.Name}" src="${pokemon.Images.Detail}" width="64"></td>
-            <td><div class="content">${pokemon.PokedexNumber}</div></td>
-            <td><div class="content">${pokemon.Name}</div></td>
-            <td>${pokemon.Abilities.join("</br>")}</td>
-            <td>${pokemon.Types.join("</br>")}</td>
-          </tr></tbody>`})
-    return {
-    html: tabLigne.slice(0, etatCourant.numberOfPoke).join(""), // ici renvoi une string
-    callbacks: etatCourant.pokemons.slice(0, etatCourant.numberOfPoke).map((pokemon) =>
-      ({ [`pokemon-${pokemon.PokedexNumber}`]: {
-        onclick: () => {
-        majEtatEtPage(etatCourant, {isSelected: pokemon.PokedexNumber}); // on met à jour 
-        }
-      }})).reduce((acc, cur) => ({...acc, ...cur}), {})
-    }
+  const tabLigne = etatCourant.pokemons
+  .filter((pokemon) => pokemon.Name.toLowerCase()
+  .includes(etatCourant.search.toLowerCase())).map((pokemon) => { 
+  const selected=etatCourant.isSelected==pokemon.PokedexNumber?"is-selected":"";
+  return `<tbody><tr id="pokemon-${pokemon.PokedexNumber}" class="${selected}">
+  <td><img alt="${pokemon.Name}" src="${pokemon.Images.Detail}" width="64"></td>
+  <td><div class="content">${pokemon.PokedexNumber}</div></td>  
+  <td><div class="content">${pokemon.Name}</div></td>
+  <td>${pokemon.Abilities.join("</br>")}</td>
+  <td>${pokemon.Types.join("</br>")}</td>
+  </tr></tbody>`})
+  return { html: tabLigne.slice(0, etatCourant.numberOfPoke).join(""), 
+  callbacks:etatCourant.pokemons.slice(0,etatCourant.numberOfPoke)
+  .map((pokemon)=>
+    ({ [`pokemon-${pokemon.PokedexNumber}`]: {
+      onclick: () => { majEtatEtPage(etatCourant, 
+        {isSelected: pokemon.PokedexNumber})}
+    }})).reduce((acc, cur) => ({...acc, ...cur}), {})
+  }
 }
 
+/**
+ * Génère le code HTML de l'onglet
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function genereOnglet(etatCourant){
   return {
   html: `
@@ -133,6 +139,11 @@ function genereOnglet(etatCourant){
   }
 }
 
+/**
+ * Génère le code HTML du head du body
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function genereHead(etatCourant){
   return {
   html: `
@@ -148,37 +159,43 @@ function genereHead(etatCourant){
   callbacks: {}}
 }
 
+
+/**
+ * Génère le code HTML du bouton more et less en bas de la page
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function moreButton(etatCourant){
   const numbers = etatCourant.numberOfPoke < 19;
   const html= `
     <button id="button-more" class="button" tabindex="0"> More </button>
-    <button style="${numbers ? "display: none;" : ""}" id="button-less" class="button" tabindex="0">
+    <button style="${numbers ? "display: none;" : ""}" id="button-less" 
+    class="button" tabindex="0">
       Less   
     </button>`
   return { html:html, callbacks: {
     "button-more": {
-      onclick: () => (majEtatEtPage(etatCourant, { numberOfPoke: etatCourant.numberOfPoke += 10 }), 
-        console.log(etatCourant.numberOfPoke)),
+      onclick: () => majEtatEtPage(etatCourant, 
+        { numberOfPoke: etatCourant.numberOfPoke += 10 }), 
     },
     "button-less": {
-      onclick: () => (majEtatEtPage(etatCourant, { numberOfPoke: etatCourant.numberOfPoke -= 10}), 
-        console.log(etatCourant.numberOfPoke)),
+      onclick: () => majEtatEtPage(etatCourant, 
+        { numberOfPoke: etatCourant.numberOfPoke -= 10}), 
     }}
   }
 }
 
 /**
- * Génère le code HTML du corps avec l'affichage
+ * Génère le code HTML du corps avec l'affichage des pokemons
  * @param {Etat} etatCourant 
- * @returns 
+ * @returns le code HTML et les callbacks associer.
  */
 function displayPokemonsBody (etatCourant) {
   const pokemonBody = generePokemonsBody(etatCourant);
   const onglet = genereOnglet(etatCourant);
   const head = genereHead(etatCourant);
   const button = moreButton(etatCourant); 
-  return {
-    html: `
+  return { html: `
     <div class="column">  
       <div>  
         ${onglet.html}
@@ -193,9 +210,15 @@ function displayPokemonsBody (etatCourant) {
       ...head.callbacks, ...button.callbacks}};
 }
 
+/**
+ * Génère le code HTML du corps avec l'affichage du details (header)
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function detailHeaderPokemon (etatCourant){
   if (!etatCourant.isSelected) return {html: "", callbacks: {}};
-  const pokemon = etatCourant.pokemons.find(pokemon => pokemon.PokedexNumber === etatCourant.isSelected);
+  const pokemon = etatCourant.pokemons.find(pokemon => 
+    pokemon.PokedexNumber === etatCourant.isSelected);
   const html = `<div class="card-header">
                   <div class="card-header-title">
                     ${pokemon.JapaneseName}
@@ -207,6 +230,11 @@ function detailHeaderPokemon (etatCourant){
   }
 }
 
+/**
+ * Génère le code HTML du corps avec l'affichage du details (Body name)
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function detailBodyName (pokemon, etatCourant){
   return {
   html: `
@@ -219,31 +247,42 @@ function detailBodyName (pokemon, etatCourant){
   }
 }
 
+/**
+ * Génère le code HTML du corps avec l'affichage du details (Body content)
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function detailBodyContent(pokemon, etatCourant){
   return {
   html: `
     <div class="content has-text-left">
-      <p>Hit points: ${pokemon.Attack}</p>
+      <p>Hit points: ${pokemon.Hp}</p>
       <h3>Abilities</h3><ul>
-        <li>${pokemon.Abilities.join("<li></li>")}</li>
+        <li>${pokemon.Abilities.join("</li><li>")}</li>
       </ul>
       <h3>Resistant against</h3><ul>
         <li>${Object.keys(pokemon.Against)
-        .filter(x => pokemon.Against[x] < 1).join("<li></li>")}</li>
+        .filter(x => pokemon.Against[x] < 1).join("</li><li>")}</li>
       </ul>
       <h3>Weak against</h3>
       <ul>
         <li>${Object.keys(pokemon.Against)
-        .filter(x => pokemon.Against[x] > 1).join("<li></li>")}</li>
+        .filter(x => pokemon.Against[x] > 1).join("</li><li>")}</li>
       </ul>
     </div>`,
   callbacks: {},
   }
 }
 
+/**
+ * Génère le code HTML du corps avec l'affichage du details (Body detail)
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function detailBodyPokemon (etatCourant){
   if (!etatCourant.isSelected) return {html: "", callbacks: {}};
-  const pokemon = etatCourant.pokemons.find(pokemon => pokemon.PokedexNumber === etatCourant.isSelected);
+  const pokemon = etatCourant.pokemons.find(pokemon => 
+    pokemon.PokedexNumber === etatCourant.isSelected);
   const name = detailBodyName(pokemon ,etatCourant);
   const content = detailBodyContent(pokemon, etatCourant);
   const html = `
@@ -262,8 +301,16 @@ function detailBodyPokemon (etatCourant){
   return { html: html, callbacks: {} }
 }
 
+/**
+ * Génère le code HTML du corps avec l'affichage du details (footer)
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function detailFooterPokemon (etatCourant) {
-  const html = `<button id="ajout-deck" class="is-success button" tabindex="0">
+  const connected = etatCourant.login === undefined;
+  const html = `<button id="ajout-deck" 
+  style="${connected ? "display: none;" : ""}" 
+  class="button is-success" tabindex="0">
   Ajouter à mon deck</button>`
   return {
     html: html, 
@@ -271,6 +318,11 @@ function detailFooterPokemon (etatCourant) {
   }
 }
 
+/**
+ * Compile le code pour donner le detail final.
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function genereDetailPokemon (etatCourant) {
   const header = detailHeaderPokemon(etatCourant);
   const body = detailBodyPokemon(etatCourant);
@@ -296,6 +348,11 @@ function genereDetailPokemon (etatCourant) {
   }
 }
 
+/**
+ * Compile le code pour donner le detail final.
+ * @param {Etat} etatCourant 
+ * @returns le code HTML et les callbacks associer.
+ */
 function generePokedex (etatCourant) {
   const pokemonsBody = displayPokemonsBody(etatCourant);
   const detailPokemon = genereDetailPokemon(etatCourant);
@@ -358,8 +415,8 @@ function genereModaleLoginHeader(etatCourant) {
 }
 
 /**
- * Génère le code HTML du base de page de la modale de login et les callbacks associés.
- *
+ * Génère le code HTML du base de page de la modale de login 
+ * et les callbacks associés.
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
@@ -369,15 +426,13 @@ function genereModaleLoginFooter(etatCourant) {
     html: `
   <footer class="modal-card-foot" style="justify-content: flex-end">
     <button id="btn-close-login-modal2" class="button">Fermer</button>
-    <button id="btn-submit-login-modal2" class=""button is-success"">Valider</button>
-  </footer>
-  
-  `,
+    <button id="btn-submit-login-modal2" class="button is-success">
+    Valider</button>
+  </footer>`,
     callbacks: {
       "btn-close-login-modal2": {
         onclick: () => majEtatEtPage(etatCourant, { loginModal: false }),
       },
-      
       "btn-submit-login-modal2": {
         onclick: () => {
           etatCourant.APIKey = document.getElementById("passwordAPI").value;
@@ -443,11 +498,11 @@ function afficheModaleConnexion(etatCourant) {
       <a class="navbar-item">${connected ? "" : etatCourant.login }</a>
     </div>
     <div class="buttons"> 
-        <a id="btn-connexion-modal" class="${connected ? "button is-light" : "button is-danger"}">
+        <a id="btn-connexion-modal" 
+        class="${connected ? "button is-light" : "button is-danger"}">
           <span class="icon">
             <i class="fa fa-user" aria-hidden="true"></i>
-          </span>
-        &nbsp; ${connected ? "Connexion" : "Déconnexion"}</a>
+          </span> &nbsp; ${connected ? "Connexion" : "Déconnexion"}</a>
     </div>`,
     callbacks: {
       "btn-connexion-modal": {
@@ -459,24 +514,30 @@ function afficheModaleConnexion(etatCourant) {
 }
 
 /**
- * Génère le code HTML et les callbacks pour la partie gauche du haut de page pour la barre
- * de recherche.
+ * Génère le code HTML et les callbacks pour la partie gauche du haut de page 
+ * pour la barre de recherche.
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
  */
 function genereBarRecherche(etatCourant) {
-  return {
-    html: `
+  return { html: `
     <div class="field">
       <div class="control has-icons-left">
-        <input class="input" placeholder="Chercher un pokemon" type="text" value="">
+        <input id="searchBar" class="input" placeholder="Chercher un pokemon" 
+        type="text" value="">
         <span class="icon is-left">
-          <i class="fa fa-magnifying-glass" aria-hidden="true"></i>
+          <i class="fas fa-magnifying-glass"></i>
         </span>
       </div>
     </div>`,
-    callbacks: {},
+    callbacks: {
+      "searchBar": {
+        onchange:(() =>{ majEtatEtPage(etatCourant, 
+            {search: document.getElementById("searchBar").value})
+        })
+      }
+    },
   }
 }
 
@@ -526,7 +587,8 @@ function generePage(etatCourant) {
   // d'éléments en commun.
   return {
     html: barredeNavigation.html + modaleLogin.html + mainPokedex.html,
-    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...mainPokedex.callbacks},
+    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, 
+      ...mainPokedex.callbacks},
   };
 }
 
@@ -573,7 +635,7 @@ function enregistreCallbacks(callbacks) {
     const elt = document.getElementById(id);
     if (elt === undefined || elt === null) {
       console.log(
-        `Élément inconnu: ${id}, impossible d'enregistrer de callback sur cet id`
+      `Élément inconnu: ${id}, impossible d'enregistrer de callback sur cet id`
       );
     } else {
       Object.keys(callbacks[id]).forEach((onAction) => {
@@ -607,6 +669,7 @@ function initClientPokemons() {
     login: undefined,
     errLogin: undefined,
     APIKey: undefined,
+    search: "",
   };
   lancePokemon(etatInitial);
 }
